@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_srvs
   trajectory_msgs
   urdf
+  cortex_message_handling
 )
 
 ## System dependencies are found with CMake's conventions
@@ -81,7 +82,7 @@ generate_messages(
 
 catkin_package(
   INCLUDE_DIRS include
-  CATKIN_DEPENDS actionlib dynamixel_workbench_toolbox interbotix_descriptions message_runtime roscpp sensor_msgs std_msgs std_srvs trajectory_msgs urdf yaml-cpp
+  CATKIN_DEPENDS actionlib dynamixel_workbench_toolbox interbotix_descriptions message_runtime roscpp sensor_msgs std_msgs std_srvs trajectory_msgs urdf yaml-cpp cortex_message_handling
 )
 
 ###########
@@ -101,4 +102,4 @@ include_directories(
 ## Add cmake target dependencies of the executable
 add_executable(arm_node src/arm_node.cpp src/arm_obj.cpp src/pid.cpp)
 target_link_libraries(arm_node ${catkin_LIBRARIES} ${YAML_CPP_LIBRARIES})
-add_dependencies(arm_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(arm_node ${catkin_EXPORTED_TARGETS} ${${PROJECT_NAME}_EXPORTED_TARGETS})

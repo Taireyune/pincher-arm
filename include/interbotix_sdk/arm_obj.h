@@ -13,6 +13,7 @@
 #include <control_msgs/FollowJointTrajectoryAction.h>
 #include <control_msgs/FollowJointTrajectoryResult.h>
 #include <dynamixel_workbench_toolbox/dynamixel_workbench.h>
+#include <cortex_message_handling/CortexCommands.h>
 #include "interbotix_sdk/OperatingModes.h"
 #include "interbotix_sdk/RegisterValues.h"
 #include "interbotix_sdk/JointCommands.h"
@@ -178,6 +179,7 @@ private:
     ros::Subscriber sub_joint_commands;                                                               // Subscribes to the joint commands topic (excludes gripper)
     ros::Subscriber sub_gripper_command;                                                              // Subscribes to the gripper command topic
     ros::Subscriber sub_single_joint_command;                                                         // Subscribes to the single joint topic
+    ros::Subscriber sub_cortex_commands;                                                              // Subscribes to the python3 module cortex_node
     ros::ServiceServer srv_firmware_gains;                                                            // Service to set PID firmware gains for the motors
     ros::ServiceServer srv_operating_mode;                                                            // Service to set the operating modes for the motors
     ros::ServiceServer srv_set_register;                                                              // Service to set multiple motor registers
@@ -296,6 +298,10 @@ private:
     /// @brief ROS Subscriber callback function to write any type of command to a specified joint
     /// @param msg - accepts either an angular position [rad], velocity [rad/s], current [mA], or pwm command
     void arm_write_single_joint_command(const interbotix_sdk::SingleCommand &msg);
+
+    /// @brief ROS Subscriber callback function for cortex commands
+    /// @param msg - cortex_message_handling::CortexCommands with attributes describing each joint including gripper
+    void arm_write_cortex_commands(const cortex_message_handling::CortexCommands &msg);
 
     /// @brief ROS Subscriber callback function to a user-provided joint trajectory for the arm (excludes gripper)
     /// @param msg - user-provided joint trajectory using the trajectory_msgs::JointTrajectory message type

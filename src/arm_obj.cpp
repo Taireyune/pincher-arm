@@ -748,6 +748,7 @@ void RobotArm::arm_init_subscribers(void)
     sub_gripper_command = node.subscribe("gripper/command", 100, &RobotArm::arm_write_gripper_command, this);
     sub_gripper_traj_msg = node.subscribe("gripper_controller/gripper_trajectory", 100, &RobotArm::arm_gripper_trajectory_msg_callback, this);
   }
+  sub_cortex_commands = node.subscribe("cortex_commands_R", 1, &RobotArm::arm_write_cortex_commands, this);
 }
 
 /// @brief Initialize ROS Services
@@ -920,6 +921,126 @@ void RobotArm::arm_write_single_joint_command(const interbotix_sdk::SingleComman
       ROS_ERROR("Invalid %s control mode.", msg.joint_name.c_str());
     }
   }
+}
+
+/// @brief ROS Subscriber callback function for cortex commands
+/// @param msg - cortex_message_handling::CortexCommands with attributes describing each joint including gripper
+void RobotArm::arm_write_cortex_commands(const cortex_message_handling::CortexCommands &msg)
+{
+  const char* log = NULL;
+  bool result = false;
+
+  // /// Get joint positions
+  // int32_t get_position[all_joints.size()];
+  // result = dxl_wb.getSyncReadData(
+  //   SYNC_READ_HANDLER_FOR_PRESENT_POSITION_VELOCITY_CURRENT,
+  //   joint_ids_read,
+  //   all_joints.size(),
+  //   control_items["Present_Position"]->address,
+  //   control_items["Present_Position"]->data_length,
+  //   get_position,
+  //   &log
+  // );
+  
+  /// order of the position array:
+  /// [waist, shoulder, elbow, wrist_angle, wrist_rotate, gripper, left_finger, right_finger]
+
+  // waist
+  // double waist_position = dxl_wb.convertValue2Radian(all_joints[0].motor_id, get_position[0]);
+  
+  // stop the motor from exceed max rotation angles
+  if ((joint_states.position.at(0) > 4.0f & msg.waist > 0) | (joint_states.position.at(0) < -4.0f & msg.waist < 0)) 
+  { 
+    result = dxl_wb.itemWrite(
+      joint_map["waist"].motor_id, 
+      "Goal_PWM", 
+      0, 
+      &log
+    );
+    ROS_INFO("[arm_write_cortex_commands] waist - range of motion limit reached");
+  }
+  else
+  {
+    result = dxl_wb.itemWrite(
+      joint_map["waist"].motor_id, 
+      "Goal_PWM", 
+      msg.waist, 
+      &log
+    );
+  }
+
+  // shoulder
+  result = dxl_wb.itemWrite(
+    joint_map["shoulder"].motor_id, 
+    "Goal_PWM", 
+    msg.shoulder, 
+    &log
+  );
+
+  // elbow
+  result = dxl_wb.itemWrite(
+    joint_map["elbow"].motor_id, 
+    "Goal_PWM", 
+    msg.elbow, 
+    &log
+  );
+
+  // wrist_angle
+  result = dxl_wb.itemWrite(
+    joint_map["wrist_angle"].motor_id, 
+    "Goal_PWM", 
+    msg.wrist_angle, 
+    &log
+  );
+
+  // wrist_rotate
+  // double wrist_position = dxl_wb.convertValue2Radian(all_joints[4].motor_id, get_position[4]);
+
+  // stop the motor from exceed max rotation angles
+  if ((joint_states.position.at(4) > 1.7f & msg.wrist_rotate > 0)
+    |
+    (joint_states.position.at(4) < -1.7f & msg.wrist_rotate < 0)
+  ) 
+  { 
+    result = dxl_wb.itemWrite(
+      joint_map["wrist_rotate"].motor_id, 
+      "Goal_PWM", 
+      0, 
+      &log
+    );
+    ROS_INFO("[arm_write_cortex_commands] wrist_rotate - range of motion limit reached");
+  }
+  else
+  {
+    result = dxl_wb.itemWrite(
+      joint_map["wrist_rotate"].motor_id, 
+      "Goal_PWM", 
+      msg.wrist_rotate, 
+      &log
+    );
+  }
+
+  // gripper
+  result = dxl_wb.itemWrite(
+    joint_map["gripper"].motor_id, 
+    "Goal_PWM", 
+    msg.gripper, 
+    &log
+  );
+
+  /// using syncWrite
+  // int32_t joint_pwms[] = {
+  //   msg.waist,
+  //   msg.shoulder,
+  //   msg.elbow,
+  //   msg.wrist_angle,
+  //   msg.wrist_rotate,
+  //   msg.gripper,
+  //   0,
+  //   0
+  // };
+  // result = dxl_wb.syncWrite(SYNC_WRITE_HANDLER_FOR_GOAL_PWM, joint_ids_write, joint_num_write, joint_pwms, 1, &log);
+  arm_check_error(result, &log);  
 }
 
 /// @brief ROS Subscriber callback function to a user-provided joint trajectory for the arm (excludes gripper)
@@ -1341,7 +1462,6 @@ void RobotArm::arm_update_joint_states(const ros::TimerEvent &e)
 
   if (dxl_wb.getProtocolVersion() == 2.0f)
   {
-
     result = dxl_wb.syncRead(SYNC_READ_HANDLER_FOR_PRESENT_POSITION_VELOCITY_CURRENT,
                                 joint_ids_read,
                                 all_joints.size(),
